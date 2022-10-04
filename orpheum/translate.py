@@ -487,6 +487,17 @@ class Translate:
     "start codon (ATG) and ending in a stop codon "
     "(TAG, TAA, TGA)",
 )
+@click.option(
+    "--check-splice-sites",
+    is_flag=True,
+    help="If set, then check for splice sites in the sequence, and "
+         "don't use k-mers outside of the splice signals",
+)
+@click.option(
+    "--splice-site-signals",
+    default=constants_translate.DEFAULT_SPLICE_SITE_SIGNALS,
+    help="Splice donor-acceptor pairs to detect",
+)
 @click.option("--verbose", is_flag=True, help="Print more output")
 def cli(
     peptides,
@@ -506,6 +517,7 @@ def cli(
     tablesize=constants_index.DEFAULT_MAX_TABLESIZE,
     n_tables=constants_index.DEFAULT_N_TABLES,
     long_reads=False,
+    check_splice_sites=False,
     verbose=False,
 ):
     """Writes coding peptides from reads to standard output
