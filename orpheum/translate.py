@@ -9,7 +9,6 @@ import warnings
 import functools
 
 import click
-from maxentpy import maxent_fast
 import numpy as np
 import screed
 from sourmash.minhash import hash_murmur
@@ -147,24 +146,6 @@ class Translate:
             self.peptide_bloom_filter_filename = self.peptides
         self.peptide_ksize = self.peptide_bloom_filter.ksize()
         self.nucleotide_ksize = 3 * self.peptide_ksize
-
-        if self.check_splice_sites:
-            self.maxent_matrix5 = maxent_fast.load_matrix(5)
-            self.maxent_matrix3 = maxent_fast.load_matrix(3)
-
-    def score3_single_23mer(self, three_prime_23mer):
-        return maxent_fast.score3(three_prime_23mer, matrix=self.maxent_matrix3)
-
-    def score5_single_9mer(self, five_primer_9mer):
-        return maxent_fast.score5(five_primer_9mer, matrix=self.maxent_matrix5)
-
-    def score5_full_seq(self, sequence):
-        maxent_5p_scores = {kmer: self.score5_single_9mer(kmer) for kmer in kmerize(sequence, 9)}
-        return maxent_5p_scores
-
-    def score3_full_seq(self, sequence):
-        maxent_3p_scores = {kmer: self.score3_single_23mer(kmer) for kmer in kmerize(sequence, 23)}
-        return maxent_3p_scores
 
     def maybe_write_fasta(self, file_handle, description, sequence):
         """Write fasta to file handle if it is not None"""

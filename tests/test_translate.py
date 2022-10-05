@@ -149,15 +149,6 @@ def test_maybe_write_fasta(tmpdir, capsys, translate_class):
     assert captured.out == ""
 
 
-def test_score3_full_seq(seq, translate_class):
-    score3 = translate_class.score3_full_seq(seq)
-    assert score3 == False
-
-
-def test_score5_full_seq(seq, translate_class):
-    score5 = translate_class.score5_full_seq(seq)
-    assert score5 == False
-
 
 def test_open_and_announce(tmpdir, capsys, translate_class):
     # Check if expected announcement is made

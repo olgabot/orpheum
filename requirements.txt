@@ -16,3 +16,5 @@ s3fs
 fastparquet
 pytest
 pytest-cov
+git+https://github.com/kepbod/maxentpy/
+msgpack>=6.0.0
