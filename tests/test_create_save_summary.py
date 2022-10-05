@@ -1,5 +1,4 @@
 import os
-import warnings
 import pytest
 import pandas as pd
 from numpy.testing import assert_almost_equal

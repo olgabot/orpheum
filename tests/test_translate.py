@@ -3,7 +3,7 @@ import sys
 
 import numpy as np
 import pandas as pd
-import pandas.util.testing as pdt
+import pandas.testing as pdt
 import pytest
 from orpheum.translate import cli
 from click.testing import CliRunner
