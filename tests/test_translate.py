@@ -13,9 +13,9 @@ import orpheum.constants_translate as constants_translate
 import orpheum.constants_index as constants_index
 
 
-KHTOOLS = "orpheum"
+ORPHEUM = "orpheum"
 TRANSLATE = "translate"
-CMD = KHTOOLS + " " + TRANSLATE
+CMD = ORPHEUM + " " + TRANSLATE
 
 
 @pytest.fixture()
@@ -45,6 +45,7 @@ def translate_class(tmpdir, reads, peptide_fasta):
         n_tables=constants_index.DEFAULT_N_TABLES,
         long_reads=False,
         verbose=True,
+        check_splice_sites=True,
     )
     translate_obj = translate.Translate(args)
     return translate_obj
@@ -148,6 +149,13 @@ def test_maybe_write_fasta(tmpdir, capsys, translate_class):
     translate_class.maybe_write_fasta(open(fasta, "w"), description, sequence)
     assert captured.out == ""
 
+def test_score3_full_seq(seq, translate_class):
+    score3 = translate_class.score3_full_seq(seq)
+    assert score3 == False
+
+def test_score5_full_seq(seq, translate_class):
+    score5 = translate_class.score5_full_seq(seq)
+    assert score5 == False
 
 def test_open_and_announce(tmpdir, capsys, translate_class):
     # Check if expected announcement is made
