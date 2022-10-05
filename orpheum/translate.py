@@ -3,29 +3,26 @@ translate.py
 
 Partition reads into coding, noncoding, and low-complexity bins
 """
+import functools
 import itertools
 import sys
-import warnings
-import functools
 
 import click
 import numpy as np
 import screed
 from sourmash.minhash import hash_murmur
 
-
-from orpheum.log_utils import get_logger
-from orpheum.sequence_encodings import encode_peptide
+import orpheum.constants_index as constants_index
+import orpheum.constants_translate as constants_translate
 from orpheum.compare_kmer_content import kmerize
 from orpheum.create_save_summary import CreateSaveSummary
 from orpheum.index import (
     maybe_make_peptide_bloom_filter,
     maybe_save_peptide_bloom_filter,
 )
-import orpheum.constants_index as constants_index
-import orpheum.constants_translate as constants_translate
+from orpheum.log_utils import get_logger
+from orpheum.sequence_encodings import encode_peptide
 from orpheum.translate_single_seq import TranslateSingleSeq
-
 
 logger = get_logger(__file__)
 
@@ -114,11 +111,49 @@ def write_fasta(file_handle, description, sequence):
 
 
 class Translate:
-    def __init__(self, args):
+    def __init__(
+        self,
+        peptides,
+        reads,
+        peptide_ksize=None,
+        save_peptide_bloom_filter=True,
+        peptides_are_bloom_filter=False,
+        jaccard_threshold=None,
+        alphabet="protein",
+        csv=None,
+        parquet=None,
+        json_summary=None,
+        coding_nucleotide_fasta=None,
+        noncoding_nucleotide_fasta=None,
+        low_complexity_nucleotide_fasta=None,
+        low_complexity_peptide_fasta=None,
+        tablesize=constants_index.DEFAULT_MAX_TABLESIZE,
+        n_tables=constants_index.DEFAULT_N_TABLES,
+        long_reads=False,
+        check_splice_sites=False,
+        verbose=False,
+    ):
         """Constructor"""
-        self.args = args
-        for key in args:
-            setattr(self, key, args[key])
+        self.peptides = peptides
+        self.reads = reads
+        self.peptide_ksize = peptide_ksize
+        self.peptides_are_bloom_filter = peptides_are_bloom_filter
+        self.save_peptide_bloom_filter = save_peptide_bloom_filter
+        self.jaccard_threshold = jaccard_threshold
+        self.alphabet = alphabet
+        self.csv = csv
+        self.parquet = parquet
+        self.json_summary = json_summary
+        self.coding_nucleotide_fasta = coding_nucleotide_fasta
+        self.noncoding_nucleotide_fasta = noncoding_nucleotide_fasta
+        self.low_complexity_nucleotide_fasta = low_complexity_nucleotide_fasta
+        self.low_complexity_peptide_fasta = low_complexity_peptide_fasta
+        self.tablesize = tablesize
+        self.n_tables = n_tables
+        self.long_reads = long_reads
+        self.check_splice_sites = check_splice_sites
+        self.verbose = verbose
+
         if self.long_reads:
             raise NotImplementedError("Not implemented! ... yet :)")
         self.jaccard_threshold = get_jaccard_threshold(
@@ -207,36 +242,51 @@ class Translate:
 
         return fraction_in_peptide_db, n_kmers
 
+    @staticmethod
+    def _scoring_line_stop_codon(frame):
+        return constants_translate.SingleReadScore(
+            np.nan,
+            np.nan,
+            constants_translate.PROTEIN_CODING_CATEGORIES["stop_codons"],
+            frame,
+        )
+
+    @staticmethod
+    def _scoring_line_too_short_peptide(frame):
+        return constants_translate.SingleReadScore(
+            np.nan,
+            np.nan,
+            constants_translate.PROTEIN_CODING_CATEGORIES[
+                "too_short_peptide"
+            ],
+            frame,
+        )
+
+    @staticmethod
+    def _scoring_line_low_protein_complexity(frame, n_kmers, alphabet):
+        constants_translate.SingleReadScore(
+            np.nan,
+            n_kmers,
+            constants_translate.LOW_COMPLEXITY_CATEGORIES[
+                alphabet
+            ],
+            frame,
+        )
+
     def check_peptide_content(self, description, sequence):
         """Predict whether a nucleotide sequence could be protein-coding"""
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            translations = TranslateSingleSeq(
-                sequence, self.verbose
-            ).six_frame_translation()
+        # with warnings.catch_warnings():
+        #     warnings.simplefilter("ignore")
+        translations = TranslateSingleSeq(
+            sequence, self.verbose
+        ).six_frame_translation()
         scoring_lines = []
 
         for frame, translation in translations.items():
             if "*" in translation:
-                scoring_lines.append(
-                    constants_translate.SingleReadScore(
-                        np.nan,
-                        np.nan,
-                        constants_translate.PROTEIN_CODING_CATEGORIES["stop_codons"],
-                        frame,
-                    )
-                )
+                scoring_lines.append(self._scoring_line_stop_codon)
             elif len(translation) <= self.peptide_ksize:
-                scoring_lines.append(
-                    constants_translate.SingleReadScore(
-                        np.nan,
-                        np.nan,
-                        constants_translate.PROTEIN_CODING_CATEGORIES[
-                            "too_short_peptide"
-                        ],
-                        frame,
-                    )
-                )
+                scoring_lines.append(self._scoring_line_too_short_peptide)
             else:
                 encoded = encode_peptide(str(translation), self.alphabet)
                 fraction_in_peptide_db, n_kmers = self.score_single_translation(encoded)
@@ -250,15 +300,8 @@ class Translate:
                         translation,
                     )
                     scoring_lines.append(
-                        constants_translate.SingleReadScore(
-                            np.nan,
-                            n_kmers,
-                            constants_translate.LOW_COMPLEXITY_CATEGORIES[
-                                self.alphabet
-                            ],
-                            frame,
-                        )
-                    )
+                        self._scoring_line_low_protein_complexity(frame, n_kmers,
+                                                                  self.alphabet))
                 else:
                     if self.verbose:
                         logger.info(
@@ -392,8 +435,8 @@ class Translate:
     default=None,
     type=int,
     help="K-mer size of the peptide sequence to use. Defaults for"
-    " different alphabets are, "
-    "protein: {}, dayhoff {}, hydrophobic-polar {}".format(
+         " different alphabets are, "
+         "protein: {}, dayhoff {}, hydrophobic-polar {}".format(
         constants_index.DEFAULT_PROTEIN_KSIZE,
         constants_index.DEFAULT_DAYHOFF_KSIZE,
         constants_index.DEFAULT_HP_KSIZE,
@@ -404,8 +447,8 @@ class Translate:
     is_flag=True,
     default=False,
     help="If specified, save the peptide bloom filter. "
-    "Default filename is the name of the fasta file plus a "
-    "suffix denoting the protein encoding and peptide ksize",
+         "Default filename is the name of the fasta file plus a "
+         "suffix denoting the protein encoding and peptide ksize",
 )
 @click.option(
     "--peptides-are-bloom-filter",
@@ -419,13 +462,13 @@ class Translate:
     type=click.FLOAT,
     callback=validate_jaccard,
     help="Minimum fraction of peptide k-mers from read in the "
-    "peptide database for this read to be called a "
-    "'coding read'.'"
-    "Default:"
-    "{}".format(constants_translate.DEFAULT_JACCARD_THRESHOLD)
-    + " for protein and dayhoff encodings, and "  # noqa
-    + "{}".format(constants_translate.DEFAULT_HP_JACCARD_THRESHOLD)  # noqa
-    + "for hydrophobic-polar (hp) encoding",  # noqa
+         "peptide database for this read to be called a "
+         "'coding read'.'"
+         "Default:"
+         "{}".format(constants_translate.DEFAULT_JACCARD_THRESHOLD)
+         + " for protein and dayhoff encodings, and "  # noqa
+         + "{}".format(constants_translate.DEFAULT_HP_JACCARD_THRESHOLD)  # noqa
+         + "for hydrophobic-polar (hp) encoding",  # noqa
 )
 @click.option(
     "--alphabet",
@@ -433,8 +476,8 @@ class Translate:
     "--molecule",
     default="protein",
     help="The type of amino acid encoding to use. Default is "
-    "'protein', but 'dayhoff' or 'hydrophobic-polar' can be "
-    "used",
+         "'protein', but 'dayhoff' or 'hydrophobic-polar' can be "
+         "used",
 )
 @click.option(
     "--csv",
@@ -445,14 +488,14 @@ class Translate:
     "--parquet",
     default=None,
     help="Name of parquet file to write with all sequence reads and "
-    "their coding scores",
+         "their coding scores",
 )
 @click.option(
     "--json-summary",
     default=None,
     help="Name of json file to write summarization of coding/"
-    "noncoding/other categorizations, the "
-    "min/max/mean/median/stddev of Jaccard scores, and other",
+         "noncoding/other categorizations, the "
+         "min/max/mean/median/stddev of Jaccard scores, and other",
 )
 @click.option(
     "--coding-nucleotide-fasta",
@@ -486,8 +529,8 @@ class Translate:
     "--long-reads",
     is_flag=True,
     help="If set, then only considers reading frames starting with "
-    "start codon (ATG) and ending in a stop codon "
-    "(TAG, TAA, TGA)",
+         "start codon (ATG) and ending in a stop codon "
+         "(TAG, TAA, TGA)",
 )
 @click.option(
     "--check-splice-sites",
@@ -592,7 +635,27 @@ def cli(
         Outputs a fasta-formatted sequence of translated peptides
     """
     # \b above prevents re-wrapping of paragraphs
-    translate_obj = Translate(locals())
+    translate_obj = Translate(
+        peptides,
+        reads,
+        peptide_ksize,
+        save_peptide_bloom_filter,
+        peptides_are_bloom_filter,
+        jaccard_threshold,
+        alphabet,
+        csv,
+        parquet,
+        json_summary,
+        coding_nucleotide_fasta,
+        noncoding_nucleotide_fasta,
+        low_complexity_nucleotide_fasta,
+        low_complexity_peptide_fasta,
+        tablesize,
+        n_tables,
+        long_reads,
+        check_splice_sites,
+        verbose
+    )
     translate_obj.set_coding_scores_all_files()
     assemble_summary_obj = CreateSaveSummary(
         reads,
