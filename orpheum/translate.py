@@ -22,6 +22,7 @@ from orpheum.index import (
 )
 from orpheum.log_utils import get_logger
 from orpheum.sequence_encodings import encode_peptide
+from orpheum.splicesite import SpliceSite
 from orpheum.translate_single_seq import TranslateSingleSeq
 
 logger = get_logger(__file__)
@@ -182,6 +183,9 @@ class Translate:
         self.peptide_ksize = self.peptide_bloom_filter.ksize()
         self.nucleotide_ksize = 3 * self.peptide_ksize
 
+        if self.check_splice_sites:
+            self.splicesite = SpliceSite()
+
     def maybe_write_fasta(self, file_handle, description, sequence):
         """Write fasta to file handle if it is not None"""
         if file_handle is not None:
@@ -275,8 +279,6 @@ class Translate:
 
     def check_peptide_content(self, description, sequence):
         """Predict whether a nucleotide sequence could be protein-coding"""
-        # with warnings.catch_warnings():
-        #     warnings.simplefilter("ignore")
         translations = TranslateSingleSeq(
             sequence, self.verbose
         ).six_frame_translation()
