@@ -5,12 +5,12 @@ import numpy as np
 import pandas as pd
 import pandas.util.testing as pdt
 import pytest
-from orpheum.translate import cli
 from click.testing import CliRunner
 
-import orpheum.translate as translate
-import orpheum.constants_translate as constants_translate
 import orpheum.constants_index as constants_index
+import orpheum.constants_translate as constants_translate
+import orpheum.translate as translate
+from orpheum.translate import cli
 
 ORPHEUM = "orpheum"
 TRANSLATE = "translate"
@@ -46,7 +46,7 @@ def translate_class(tmpdir, reads, peptide_fasta):
         verbose=True,
         check_splice_sites=True,
     )
-    translate_obj = translate.Translate(args)
+    translate_obj = translate.Translate(**args)
     return translate_obj
 
 
@@ -147,7 +147,6 @@ def test_maybe_write_fasta(tmpdir, capsys, translate_class):
     # check if file handle is a temporary fasta file
     translate_class.maybe_write_fasta(open(fasta, "w"), description, sequence)
     assert captured.out == ""
-
 
 
 def test_open_and_announce(tmpdir, capsys, translate_class):
