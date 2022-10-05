@@ -166,7 +166,6 @@ class Translate:
         maxent_3p_scores = {kmer: self.score3_single_23mer(kmer) for kmer in kmerize(sequence, 23)}
         return maxent_3p_scores
 
-
     def maybe_write_fasta(self, file_handle, description, sequence):
         """Write fasta to file handle if it is not None"""
         if file_handle is not None:

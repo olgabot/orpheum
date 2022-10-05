@@ -12,7 +12,6 @@ import orpheum.translate as translate
 import orpheum.constants_translate as constants_translate
 import orpheum.constants_index as constants_index
 
-
 ORPHEUM = "orpheum"
 TRANSLATE = "translate"
 CMD = ORPHEUM + " " + TRANSLATE
@@ -149,13 +148,16 @@ def test_maybe_write_fasta(tmpdir, capsys, translate_class):
     translate_class.maybe_write_fasta(open(fasta, "w"), description, sequence)
     assert captured.out == ""
 
+
 def test_score3_full_seq(seq, translate_class):
     score3 = translate_class.score3_full_seq(seq)
     assert score3 == False
 
+
 def test_score5_full_seq(seq, translate_class):
     score5 = translate_class.score5_full_seq(seq)
     assert score5 == False
+
 
 def test_open_and_announce(tmpdir, capsys, translate_class):
     # Check if expected announcement is made
@@ -201,7 +203,6 @@ def test_score_single_translation(translations_for_single_seq, translate_class):
 
 
 def test_get_coding_score_line(translate_class, translations_for_single_seq):
-
     # Convert to BioPython sequence object for translation
     result = translate_class.get_coding_score_line(
         "description", 0.5, 40, "test special case", -2
@@ -218,7 +219,6 @@ def test_get_coding_score_line(translate_class, translations_for_single_seq):
 def test_cli_peptide_fasta(
     reads, peptide_fasta, alphabet, peptide_ksize, true_protein_coding_fasta_string
 ):
-
     runner = CliRunner()
     result = runner.invoke(
         cli,
@@ -242,7 +242,6 @@ def test_cli_peptide_fasta(
 
 
 def test_cli_bad_jaccard_threshold_float(reads, peptide_fasta):
-
     runner = CliRunner()
     result = runner.invoke(cli, ["--jaccard-threshold", "3.14", peptide_fasta, reads])
     assert result.exit_code == 2
@@ -293,7 +292,6 @@ def test_cli_csv(
     true_protein_coding_fasta_string,
     true_scores,
 ):
-
     csv = os.path.join(tmpdir, "coding_scores.csv")
 
     runner = CliRunner()
@@ -332,7 +330,6 @@ def test_cli_parquet(
     true_protein_coding_fasta_string,
     true_scores,
 ):
-
     parquet = os.path.join(tmpdir, "coding_scores.parquet")
 
     runner = CliRunner()
@@ -363,7 +360,6 @@ def test_cli_parquet(
 
 
 def test_cli_coding_nucleotide_fasta(tmpdir, reads, peptide_fasta):
-
     coding_nucleotide_fasta = os.path.join(tmpdir, "coding_nucleotides.fasta")
 
     runner = CliRunner()
@@ -376,7 +372,6 @@ def test_cli_coding_nucleotide_fasta(tmpdir, reads, peptide_fasta):
 
 
 def test_cli_noncoding_fasta(tmpdir, reads, peptide_fasta):
-
     noncoding_nucleotide_fasta = os.path.join(tmpdir, "noncoding_nucleotides.fasta")
 
     runner = CliRunner()
@@ -394,7 +389,6 @@ def test_cli_noncoding_fasta(tmpdir, reads, peptide_fasta):
 
 
 def test_cli_low_complexity_nucleotide(tmpdir, reads, peptide_fasta):
-
     low_complexity_nucleotide_fasta = os.path.join(
         tmpdir, "low_complexity_nucleotide.fasta"
     )
@@ -414,7 +408,6 @@ def test_cli_low_complexity_nucleotide(tmpdir, reads, peptide_fasta):
 
 
 def test_cli_low_complexity_peptide(tmpdir, reads, peptide_fasta):
-
     low_complexity_peptide_fasta = os.path.join(tmpdir, "low_complexity_peptide.fasta")
 
     runner = CliRunner()
@@ -432,7 +425,6 @@ def test_cli_low_complexity_peptide(tmpdir, reads, peptide_fasta):
 
 
 def test_cli_json_summary(tmpdir, reads, peptide_fasta):
-
     json_summary = os.path.join(tmpdir, "coding_summary.json")
 
     runner = CliRunner()
@@ -442,7 +434,6 @@ def test_cli_json_summary(tmpdir, reads, peptide_fasta):
 
 
 def test_cli_empty_fasta_json_summary(tmpdir, empty_fasta, peptide_fasta):
-
     json_summary = os.path.join(tmpdir, "coding_summary.json")
 
     runner = CliRunner()
